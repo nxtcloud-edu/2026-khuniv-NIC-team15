@@ -1,0 +1,6 @@
+{
+  "name": "KYUNGHEE ROAD",
+  "description": "경희대학교 국제캠퍼스 제휴업체 지도 및 학우 혜택 안내 플랫폼 (식당, 카페, 주점, 운동, 라이프 혜택 & 제휴봇 & 사다리 타기)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
