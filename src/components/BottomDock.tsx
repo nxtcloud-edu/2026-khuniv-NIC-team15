@@ -47,7 +47,7 @@ export const BottomDock: React.FC<BottomDockProps> = ({
       </div>
 
       {/* Bottom Right AI Chatbot FAB */}
-      <div className="absolute bottom-5 sm:bottom-6 right-3 sm:right-6 z-[1000] pointer-events-auto">
+      <div className="absolute bottom-5 sm:bottom-6 right-3 sm:right-6 z-[1500] pointer-events-auto">
         <button
           id="chatbot-fab-button"
           onClick={onToggleChatbot}

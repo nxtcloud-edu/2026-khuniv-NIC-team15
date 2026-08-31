@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Store, StoreCategory, KyungHeeCollege, KHU_COLLEGES } from '../types';
 import { KHU_GATE_LOCATION } from '../data/stores';
-import { getCollegeBadgeInfo, isStoreAffiliatedWithCollege } from '../utils/collegeAffiliation';
+import { getCollegeBadgeInfo, isStoreAffiliatedWithCollege, countStoresForCollege } from '../utils/collegeAffiliation';
 import {
   X,
   Flame,
@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   GraduationCap,
   Building2,
+  CalendarDays,
 } from 'lucide-react';
 
 interface RankingModalProps {
@@ -170,7 +171,7 @@ export const RankingModal: React.FC<RankingModalProps> = ({
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  전체 단과대 공통 (42개)
+                  전체 단과대 공통 ({stores.length}개)
                 </button>
               </div>
             </div>
@@ -186,7 +187,7 @@ export const RankingModal: React.FC<RankingModalProps> = ({
                 >
                   {KHU_COLLEGES.map((col) => (
                     <option key={col} value={col}>
-                      {col} ({stores.filter((s) => isStoreAffiliatedWithCollege(s, col)).length}개)
+                      {col} ({countStoresForCollege(stores, col)}개)
                     </option>
                   ))}
                 </select>
@@ -458,6 +459,12 @@ export const RankingModal: React.FC<RankingModalProps> = ({
                     <div className="text-xs font-bold text-[#8B1D24] leading-relaxed whitespace-pre-line bg-white/70 p-2.5 rounded-lg border border-red-100">
                       {store.benefit}
                     </div>
+                    {store.period && (
+                      <div className="flex items-center gap-1 text-[11px] font-black text-[#8B1D24]">
+                        <CalendarDays className="w-3.5 h-3.5" />
+                        <span>제휴 기간 {store.period}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Bottom Store Details & Tags */}

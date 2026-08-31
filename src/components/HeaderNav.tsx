@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FilterType, Store, StudentProfile, KyungHeeCollege, KHU_COLLEGES } from '../types';
-import { isStoreAffiliatedWithCollege, getCollegeBadgeInfo } from '../utils/collegeAffiliation';
+import { isStoreAffiliatedWithCollege, getCollegeBadgeInfo, countStoresForCollege } from '../utils/collegeAffiliation';
 import {
   Search,
   MapPin,
@@ -14,6 +14,7 @@ import {
   GraduationCap,
   ChevronDown,
   Building,
+  RefreshCw,
 } from 'lucide-react';
 
 interface HeaderNavProps {
@@ -30,7 +31,11 @@ interface HeaderNavProps {
   activeCollege: KyungHeeCollege | 'all';
   onSelectActiveCollege: (college: KyungHeeCollege | 'all') => void;
   filteredCount: number;
-  totalAffiliatedCount: number;
+  myCollegeCount: number;
+  selectedCollegeCount: number;
+  totalStoreCount: number;
+  syncMeta: { syncedAt: string | null; syncing: boolean; note?: string };
+  onSyncPartners: () => void;
 }
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
@@ -47,7 +52,11 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   activeCollege,
   onSelectActiveCollege,
   filteredCount,
-  totalAffiliatedCount,
+  myCollegeCount,
+  selectedCollegeCount,
+  totalStoreCount,
+  syncMeta,
+  onSyncPartners,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -64,9 +73,11 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
     onSearch('');
   };
 
+  const visibleStores = stores.filter((s) => isStoreAffiliatedWithCollege(s, activeCollege));
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      const match = stores.find(
+      const match = visibleStores.find(
         (s) =>
           s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           s.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -81,7 +92,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   };
 
   const searchSuggestions = searchTerm.trim()
-    ? stores
+    ? visibleStores
         .filter(
           (s) =>
             s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -153,7 +164,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                 }`}
                 title={`${userCollege} 제휴 매장만 보기`}
               >
-                {userCollege} ({totalAffiliatedCount}개)
+                {userCollege} ({myCollegeCount}개)
               </button>
               <button
                 id="btn-college-all"
@@ -163,9 +174,9 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                     ? 'bg-[#8B1D24] text-white shadow-xs'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
-                title="전체 단과대 매장 42개 보기"
+                title={`전체 단과대 매장 ${totalStoreCount}개 보기`}
               >
-                전체 (42개)
+                전체 ({totalStoreCount}개)
               </button>
             </div>
           </div>
@@ -178,9 +189,9 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               className="text-[10px] font-bold bg-red-50 text-[#8B1D24] border border-red-200 rounded-lg px-1.5 py-1 outline-none cursor-pointer focus:ring-1 focus:ring-[#8B1D24]"
               title="다른 단과대학 제휴 현황 확인"
             >
-              <option value="all">전체 (42개)</option>
+              <option value="all">전체 ({totalStoreCount}개)</option>
               {KHU_COLLEGES.map((c) => {
-                const count = stores.filter((s) => isStoreAffiliatedWithCollege(s, c)).length;
+                const count = countStoresForCollege(stores, c);
                 return (
                   <option key={c} value={c}>
                     {c} ({count}개)
@@ -190,6 +201,12 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             </select>
           </div>
         </div>
+        <p className="text-[10px] text-gray-500 font-semibold px-0.5">
+          지금 지도에 표시: {activeCollege === 'all' ? '전체' : activeCollege} {selectedCollegeCount}곳
+          {activeCollege !== 'all' && selectedCollegeCount !== totalStoreCount
+            ? ` · 전체 ${totalStoreCount}곳 중`
+            : ''}
+        </p>
 
         {/* Student Profile Row */}
         <div className="flex items-center justify-between text-[11px] pt-1 border-t border-gray-100">
@@ -215,6 +232,16 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               <Calculator className="w-3 h-3" />
               <span>절약 계산기</span>
             </div>
+
+            <button
+              onClick={onSyncPartners}
+              disabled={syncMeta.syncing}
+              className="text-[10px] font-bold bg-red-50 hover:bg-red-100 text-[#8B1D24] px-2 py-0.5 rounded-md transition-colors flex items-center gap-0.5 cursor-pointer disabled:opacity-60"
+              title={syncMeta.note || '공식 학생회 인스타그램 제휴를 AI가 다시 수집합니다'}
+            >
+              <RefreshCw className={`w-3 h-3 ${syncMeta.syncing ? 'animate-spin' : ''}`} />
+              <span>{syncMeta.syncing ? '제휴 수집 중' : '인스타 제휴 동기화'}</span>
+            </button>
 
             <button
               id="gate-locator-button"
@@ -256,7 +283,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
           )}
           <button
             onClick={() => {
-              const match = stores.find(
+              const match = visibleStores.find(
                 (s) =>
                   s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                   s.category.toLowerCase().includes(searchTerm.toLowerCase())

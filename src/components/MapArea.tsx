@@ -166,6 +166,11 @@ export const MapArea: React.FC<MapAreaProps> = ({
               <div class="whitespace-pre-line font-semibold text-[11px]">
                 ${store.benefit}
               </div>
+              ${
+                store.period
+                  ? `<div class="mt-1.5 text-[10px] font-black bg-white/80 border border-red-100 rounded-md px-2 py-1">📅 제휴 기간 ${store.period}</div>`
+                  : ''
+              }
             </div>
 
             <div class="flex gap-1.5 mt-1">

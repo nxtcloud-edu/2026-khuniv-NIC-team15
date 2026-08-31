@@ -44,6 +44,11 @@ export interface Store {
   estimatedSaving?: string;
   colleges: KyungHeeCollege[];
   isAllColleges?: boolean;
+  /** 인스타 제휴 안내 표의 제휴 기간 */
+  period?: string;
+  sourceHandle?: string;
+  sourceUrl?: string;
+  verifiedAt?: string;
 }
 
 export interface ChatMessage {

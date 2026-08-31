@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Store, KyungHeeCollege } from '../types';
 import { getCollegeBadgeInfo } from '../utils/collegeAffiliation';
-import { X, MapPin, Phone, Clock, Gift, Share2, Navigation, Check, ExternalLink, GraduationCap, Building2 } from 'lucide-react';
+import { X, MapPin, Phone, Clock, Gift, Share2, Navigation, Check, ExternalLink, GraduationCap, Building2, CalendarDays } from 'lucide-react';
 
 interface StoreDetailModalProps {
   store: Store | null;
@@ -17,7 +17,7 @@ export const StoreDetailModal: React.FC<StoreDetailModalProps> = ({ store, onClo
   const badgeInfo = getCollegeBadgeInfo(store, currentCollege);
 
   const handleCopyBenefit = () => {
-    const text = `[경희대학교 제휴 혜택]\n매장: ${store.name}\n혜택: ${store.benefit}\n주소: ${store.addr}`;
+    const text = `[경희대학교 제휴 혜택]\n매장: ${store.name}\n기간: ${store.period || '제휴 기간 확인 필요'}\n혜택: ${store.benefit}\n주소: ${store.addr}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
@@ -131,8 +131,15 @@ export const StoreDetailModal: React.FC<StoreDetailModalProps> = ({ store, onClo
             <p className="text-xs font-bold leading-relaxed whitespace-pre-line bg-white/60 p-2.5 rounded-xl border border-red-100">
               {store.benefit}
             </p>
+            {store.period && (
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#8B1D24] bg-white/80 px-2.5 py-1.5 rounded-lg border border-red-100">
+                <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+                <span>제휴 기간 {store.period}</span>
+              </div>
+            )}
             <p className="text-[10px] text-gray-500 font-medium">
               💡 결제 전 학생증(또는 모바일 학생증)을 제시해 주세요.
+              {store.sourceHandle ? ` · 출처 @${store.sourceHandle}` : ''}
             </p>
           </div>
 

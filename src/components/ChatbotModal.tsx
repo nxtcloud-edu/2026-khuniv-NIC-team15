@@ -73,10 +73,10 @@ export const ChatbotModal: React.FC<ChatbotModalProps> = ({
       // General match
       matched = stores.filter(
         (s) =>
-          s.name.toLowerCase().includes(q) ||
-          s.category.toLowerCase().includes(q) ||
-          s.benefit.toLowerCase().includes(q) ||
-          s.desc.toLowerCase().includes(q)
+          (s.name || '').toLowerCase().includes(q) ||
+          (s.category || '').toLowerCase().includes(q) ||
+          (s.benefit || '').toLowerCase().includes(q) ||
+          (s.desc || '').toLowerCase().includes(q)
       );
     }
 
@@ -89,7 +89,8 @@ export const ChatbotModal: React.FC<ChatbotModalProps> = ({
 
     picks.forEach((s) => {
       reply += `📍 **${s.name}** (${s.category})\n`;
-      reply += `🎁 **혜택**: ${s.benefit.replace(/\n/g, ' ')}\n`;
+      reply += `🎁 **혜택**: ${(s.benefit || '').replace(/\n/g, ' ')}\n`;
+      if (s.period) reply += `📅 **기간**: ${s.period}\n`;
       reply += `💡 **특징**: ${s.desc}\n\n`;
     });
 
@@ -113,7 +114,6 @@ export const ChatbotModal: React.FC<ChatbotModalProps> = ({
     setIsLoading(true);
 
     try {
-      // Call server-side API with Gemini
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -124,18 +124,16 @@ export const ChatbotModal: React.FC<ChatbotModalProps> = ({
             name: s.name,
             category: s.category,
             benefit: s.benefit,
+            period: s.period,
             desc: s.desc,
             type: s.type,
           })),
         }),
+        signal: AbortSignal.timeout(28000),
       });
 
-      if (!res.ok) {
-        throw new Error('API_RESPONSE_NOT_OK');
-      }
-
-      const data = await res.json();
-      if (data.success && data.reply) {
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.success && data.reply) {
         const botMsg: ChatMessage = {
           id: (Date.now() + 1).toString(),
           sender: 'bot',
@@ -143,12 +141,16 @@ export const ChatbotModal: React.FC<ChatbotModalProps> = ({
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
         setMessages((prev) => [...prev, botMsg]);
-      } else {
-        throw new Error(data.message || 'Error occurred');
+        return;
       }
-    } catch (err) {
-      // Intelligent Local Recommendation Fallback
-      const fallbackReply = generateLocalReply(query);
+      throw new Error(data?.message || 'API_RESPONSE_NOT_OK');
+    } catch {
+      let fallbackReply = '죄송해요, 지금은 답변을 만들지 못했어요. 잠시 후 다시 물어봐 주세요 🦁';
+      try {
+        fallbackReply = generateLocalReply(query);
+      } catch {
+        // keep default
+      }
       const botMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'bot',
@@ -232,7 +234,7 @@ export const ChatbotModal: React.FC<ChatbotModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 sm:inset-auto sm:bottom-24 sm:right-6 z-[2000] flex items-end sm:items-center justify-center p-0 sm:p-0">
+    <div className="fixed inset-0 sm:inset-auto sm:bottom-24 sm:right-6 z-[2500] flex items-end sm:items-center justify-center p-0 sm:p-0">
       <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-gray-200/90 w-full sm:w-[380px] h-[85vh] sm:h-[560px] flex flex-col overflow-hidden animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-200">
         {/* Chat Header */}
         <div className="bg-[#8B1D24] text-white px-4 py-3.5 flex items-center justify-between shadow-md">

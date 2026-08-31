@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AFFILIATE_STORES } from './data/stores';
 import { FilterType, Store, StudentProfile, KyungHeeCollege } from './types';
-import { isStoreAffiliatedWithCollege } from './utils/collegeAffiliation';
+import { isStoreAffiliatedWithCollege, countStoresForCollege } from './utils/collegeAffiliation';
 import { HeaderNav } from './components/HeaderNav';
 import { MapArea } from './components/MapArea';
 import { BottomDock } from './components/BottomDock';
@@ -14,7 +14,12 @@ import { StoreDetailModal } from './components/StoreDetailModal';
 import { StudentProfileModal } from './components/StudentProfileModal';
 
 export default function App() {
-  const [stores] = useState<Store[]>(AFFILIATE_STORES);
+  const [stores, setStores] = useState<Store[]>(AFFILIATE_STORES);
+  const [syncMeta, setSyncMeta] = useState<{
+    syncedAt: string | null;
+    syncing: boolean;
+    note?: string;
+  }>({ syncedAt: null, syncing: false });
   const [currentFilter, setCurrentFilter] = useState<FilterType>('all');
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [isGateFocused, setIsGateFocused] = useState<boolean>(false);
@@ -71,6 +76,70 @@ export default function App() {
   const [isSavingsOpen, setIsSavingsOpen] = useState(false);
   const [detailStore, setDetailStore] = useState<Store | null>(null);
 
+  const applySeedCoordinates = (list: Store[]): Store[] => {
+    const byId = new Map(AFFILIATE_STORES.map((s) => [s.id, s]));
+    const byName = new Map(AFFILIATE_STORES.map((s) => [s.name.replace(/\s+/g, ''), s]));
+    return list.map((store) => {
+      const seed = byId.get(store.id) || byName.get(store.name.replace(/\s+/g, ''));
+      if (!seed) return store;
+      return {
+        ...store,
+        lat: seed.lat,
+        lng: seed.lng,
+        addr: seed.addr || store.addr,
+        colleges: seed.colleges,
+        isAllColleges: seed.isAllColleges,
+      };
+    });
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadStores = async () => {
+      try {
+        const res = await fetch('/api/stores');
+        const data = await res.json();
+        if (cancelled || !data?.stores?.length) return;
+        setStores(applySeedCoordinates(data.stores));
+        setSyncMeta({
+          syncedAt: data.syncedAt || null,
+          syncing: Boolean(data.syncing),
+          note: data.note,
+        });
+      } catch {
+        // keep seed stores
+      }
+    };
+    loadStores();
+    const timer = window.setInterval(loadStores, 60_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const handleSyncPartners = async () => {
+    setSyncMeta((prev) => ({ ...prev, syncing: true }));
+    try {
+      const res = await fetch('/api/stores/sync', { method: 'POST' });
+      const data = await res.json();
+      if (data?.stores?.length) {
+        setStores(applySeedCoordinates(data.stores));
+      }
+      setSyncMeta({
+        syncedAt: data.syncedAt || new Date().toISOString(),
+        syncing: false,
+        note: data.note || data.message,
+      });
+    } catch {
+      setSyncMeta((prev) => ({
+        ...prev,
+        syncing: false,
+        note: '동기화 요청에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+      }));
+    }
+  };
+
   // Active stores based on college selection
   const collegeFilteredStores = useMemo(() => {
     if (activeCollege === 'all') {
@@ -80,10 +149,14 @@ export default function App() {
   }, [stores, activeCollege]);
 
   // Total count for current college
-  const totalAffiliatedCount = useMemo(() => {
-    const targetCollege = activeCollege === 'all' ? (studentProfile?.college || '공과대학') : activeCollege;
-    return stores.filter((s) => isStoreAffiliatedWithCollege(s, targetCollege)).length;
-  }, [stores, activeCollege, studentProfile]);
+  const myCollegeCount = useMemo(() => {
+    const myCollege = studentProfile?.college || '공과대학';
+    return countStoresForCollege(stores, myCollege);
+  }, [stores, studentProfile]);
+
+  const selectedCollegeCount = useMemo(() => {
+    return countStoresForCollege(stores, activeCollege);
+  }, [stores, activeCollege]);
 
   // Filter count for category + college
   const filteredCount = useMemo(() => {
@@ -142,11 +215,15 @@ export default function App() {
           setIsProfileModalOpen(true);
         }}
         studentProfile={studentProfile}
-        stores={collegeFilteredStores}
+        stores={stores}
         activeCollege={activeCollege}
         onSelectActiveCollege={setActiveCollege}
         filteredCount={filteredCount}
-        totalAffiliatedCount={totalAffiliatedCount}
+        myCollegeCount={myCollegeCount}
+        selectedCollegeCount={selectedCollegeCount}
+        totalStoreCount={stores.length}
+        syncMeta={syncMeta}
+        onSyncPartners={handleSyncPartners}
       />
 
       {/* 2. Interactive Map */}
